@@ -18,7 +18,7 @@ curl -s -H 'Content-Type: text/xml; charset="utf-8"' \
 
 You "install" this module by building your own `caddy` binary via `xcaddy`.
 
-Example for cloudflare DNS:
+Example for [Cloudflare DNS](https://github.com/caddy-dns/cloudflare):
 
 ```Shell
 xcaddy build --with github.com/mholt/caddy-dynamicdns --with github.com/mietzen/caddy-dynamicdns-cmd-source --with github.com/caddy-dns/cloudflare 
@@ -73,5 +73,27 @@ Equivalent JSON config:
 			"dynamic_domains": false
 		}
 	}
+}
+```
+
+## Debugging
+
+For debugging use VS-Code with this `launch.json`
+
+```json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Module",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/debug/main.go",
+            "cwd": "${workspaceFolder}/debug",
+            "args": ["run"],
+            "env": {"CLOUDFLARE_API_TOKEN": "xxxxxxxxxxxxxxx"}
+        }
+    ]
 }
 ```
