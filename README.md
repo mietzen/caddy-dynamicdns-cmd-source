@@ -75,25 +75,3 @@ Equivalent JSON config:
 	}
 }
 ```
-
-## Debugging
-
-For debugging use VS-Code with this `launch.json`
-
-```json
-{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Debug Module",
-            "type": "go",
-            "request": "launch",
-            "mode": "auto",
-            "program": "${workspaceFolder}/debug/main.go",
-            "cwd": "${workspaceFolder}/debug",
-            "args": ["run"],
-            "env": {"CLOUDFLARE_API_TOKEN": "xxxxxxxxxxxxxxx"}
-        }
-    ]
-}
-```
