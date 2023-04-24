@@ -23,5 +23,7 @@ go.work
 .trunk
 caddy
 */Caddyfile
-.vscode
+.vscode/launch.json
 .DS_Store
+debug/go.mod
+debug/go.sum

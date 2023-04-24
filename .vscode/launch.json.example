@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug module",
+            "preLaunchTask": "PrepareBuildEnv",            
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}/debug/main.go",
+            "cwd": "${workspaceFolder}/debug",
+            "args": ["run"],
+            "env": {"CLOUDFLARE_API_TOKEN": "xxxxxxxxxxxxxxxxxxx"}
+        }
+    ]
+}

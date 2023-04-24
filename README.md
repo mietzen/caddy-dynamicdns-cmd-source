@@ -78,22 +78,4 @@ Equivalent JSON config:
 
 ## Debugging
 
-For debugging use VS-Code with this `launch.json`
-
-```json
-{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Debug Module",
-            "type": "go",
-            "request": "launch",
-            "mode": "auto",
-            "program": "${workspaceFolder}/debug/main.go",
-            "cwd": "${workspaceFolder}/debug",
-            "args": ["run"],
-            "env": {"CLOUDFLARE_API_TOKEN": "xxxxxxxxxxxxxxx"}
-        }
-    ]
-}
-```
+For debugging use VS-Code. Rename `launch.json.example` to `launch.json` and set the environment variables. Afterwards create a `CaddyFile` in the debug folder and press `F5`to start debugging (don't forget to switch to the `DEBUG CONSOLE`).
