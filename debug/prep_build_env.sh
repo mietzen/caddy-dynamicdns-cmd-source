@@ -7,4 +7,4 @@ cd $SCRIPT_DIR
 rm -f go.mod go.sum 
 go mod init caddy 
 go mod tidy 
-go mod edit -replace github.com/mietzen/caddy-dynamicdns-cmd-source=/Users/nils/Developer/caddy-dynamicdns-cmd-source 
+go mod edit -replace github.com/mietzen/caddy-dynamicdns-cmd-source=${SCRIPT_DIR}/..

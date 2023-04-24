@@ -27,3 +27,4 @@ caddy
 .DS_Store
 debug/go.mod
 debug/go.sum
+debug/__debug_bin
