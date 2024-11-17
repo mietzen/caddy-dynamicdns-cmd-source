@@ -37,7 +37,7 @@ Caddyfile config ([global options](https://caddyserver.com/docs/caddyfile/option
 		domains {
 			example.net subdomain
 		}
-        ip_source command echo 1.2.3.4,2004:1234::1234
+        ip_sources command echo 1.2.3.4,2004:1234::1234
         check_interval 5m
         ttl 1h
 	}
