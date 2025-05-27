@@ -45,7 +45,7 @@ jobs:
 
       - name: Build
         run: |
-          go install xcaddy
+          go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
           xcaddy build \
               --with github.com/mholt/caddy-dynamicdns \
               --with github.com/mietzen/caddy-dynamicdns-cmd-source=.
