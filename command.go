@@ -9,7 +9,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"net"
+	"net/netip"
 	"os/exec"
 	"strings"
 	"time"
@@ -42,7 +42,7 @@ type Command struct {
 
 	// How long to wait for the command to terminate
 	// before forcefully closing it. Default: 30s
-	Timeout caddy.Duration `json:"timeout,omitempty"`
+	Timeout *caddy.Duration `json:"timeout,omitempty"`
 
 	logger *zap.Logger
 }
@@ -72,17 +72,16 @@ func (c *Command) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 // Provision sets up the module.
 func (c *Command) Provision(ctx caddy.Context) error {
 	c.logger = ctx.Logger(c)
-
-	if c.Timeout <= 0 {
-		c.Timeout = caddy.Duration(30 * time.Second)
+	if c.Timeout == nil || *c.Timeout <= 0 {
+		timeout := caddy.Duration(30 * time.Second)
+		c.Timeout = &timeout
 	}
-
 	return nil
 }
 
 // GetIPs gets the public addresses of this machine.
-func (c Command) GetIPs(ctx context.Context, versions dynamicdns.IPVersions) ([]net.IP, error) {
-	out := []net.IP{}
+func (c Command) GetIPs(ctx context.Context, versions dynamicdns.IPVersions) ([]netip.Addr, error) {
+	out := []netip.Addr{}
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	var cancel context.CancelFunc
@@ -97,8 +96,9 @@ func (c Command) GetIPs(ctx context.Context, versions dynamicdns.IPVersions) ([]
 		expandedArgs[i] = replacer.ReplaceAll(c.Args[i], "")
 	}
 
-	if c.Timeout > 0 {
-		ctx, cancel = context.WithTimeout(ctx, time.Duration(c.Timeout))
+	if c.Timeout != nil && *c.Timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(*c.Timeout))
+		defer cancel()
 	}
 
 	cmd := exec.CommandContext(ctx, c.Cmd, expandedArgs...)
@@ -106,54 +106,79 @@ func (c Command) GetIPs(ctx context.Context, versions dynamicdns.IPVersions) ([]
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	if cancel != nil {
-		defer cancel()
-	}
-
 	c.logger.Debug("running command",
 		zap.String("command", c.Cmd),
 		zap.Strings("args", expandedArgs),
 		zap.String("dir", c.Dir),
-		zap.Int64("timeout", int64(time.Duration(c.Timeout))),
+		zap.Int64("timeout", int64(time.Duration(*c.Timeout))),
 	)
 
 	err := cmd.Run()
 	if err != nil {
-		return nil, err
-	}
-
-	exitCode := cmd.ProcessState.ExitCode()
-	if exitCode != 0 || len(stderr.String()) > 0 {
 		c.logger.Error("command execution failed",
 			zap.String("command", c.Cmd),
 			zap.Strings("args", expandedArgs),
 			zap.String("dir", c.Dir),
 			zap.String("stdout", stdout.String()),
 			zap.String("stderr", stderr.String()),
-			zap.Int("exit code", exitCode))
+			zap.Error(err))
+		return nil, err
+	}
+
+	exitCode := cmd.ProcessState.ExitCode()
+	if exitCode != 0 {
+		c.logger.Error("command execution failed",
+			zap.String("command", c.Cmd),
+			zap.Strings("args", expandedArgs),
+			zap.String("dir", c.Dir),
+			zap.String("stdout", stdout.String()),
+			zap.String("stderr", stderr.String()),
+			zap.Int("exit_code", exitCode))
 		return nil, fmt.Errorf("command %s exited with: %d", c.Cmd, exitCode)
 	}
 
-	ipArr := strings.Split(stdout.String(), ",")
+	// Log stderr as warning if present but command succeeded
+	if len(stderr.String()) > 0 {
+		c.logger.Warn("command produced stderr output",
+			zap.String("command", c.Cmd),
+			zap.String("stderr", stderr.String()))
+	}
 
+	ipArr := strings.Split(strings.TrimSpace(stdout.String()), ",")
 	for i := 0; i < len(ipArr); i++ {
-		ip := net.ParseIP(strings.TrimSpace(ipArr[i]))
-		if ip == nil {
-			c.logger.Error("parsing ip failed",
+		ipStr := strings.TrimSpace(ipArr[i])
+		if ipStr == "" {
+			continue // Skip empty strings
+		}
+
+		addr, err := netip.ParseAddr(ipStr)
+		if err != nil {
+			c.logger.Error("parsing IP failed",
 				zap.String("command", c.Cmd),
 				zap.Strings("args", expandedArgs),
 				zap.String("stdout", stdout.String()),
-				zap.String("ip", ipArr[i]))
-			return nil, fmt.Errorf("invalid IP: %s", ipArr[i])
+				zap.String("ip", ipStr),
+				zap.Error(err))
+			return nil, fmt.Errorf("invalid IP: %s", ipStr)
 		}
-		out = append(out, ip)
-		c.logger.Debug("parsed ip succesfull",
-			zap.String("command", c.Cmd),
-			zap.Strings("args", expandedArgs),
-			zap.String("stdout", stdout.String()),
-			zap.String("ip", ip.String()))
+
+		// Filter based on IP version requirements
+		if versions.V4Enabled() && addr.Is4() {
+			out = append(out, addr)
+			c.logger.Debug("parsed IPv4 successfully",
+				zap.String("command", c.Cmd),
+				zap.Strings("args", expandedArgs),
+				zap.String("ip", addr.String()))
+		} else if versions.V6Enabled() && addr.Is6() {
+			out = append(out, addr)
+			c.logger.Debug("parsed IPv6 successfully",
+				zap.String("command", c.Cmd),
+				zap.Strings("args", expandedArgs),
+				zap.String("ip", addr.String()))
+		}
 	}
-	return out, err
+
+	return out, nil
 }
 
 // Interface guards
