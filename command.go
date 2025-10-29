@@ -80,7 +80,7 @@ func (c *Command) Provision(ctx caddy.Context) error {
 }
 
 // GetIPs gets the public addresses of this machine.
-func (c Command) GetIPs(ctx context.Context, versions dynamicdns.IPVersions) ([]netip.Addr, error) {
+func (c Command) GetIPs(ctx context.Context, settings dynamicdns.IPSettings) ([]netip.Addr, error) {
 	out := []netip.Addr{}
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -162,14 +162,14 @@ func (c Command) GetIPs(ctx context.Context, versions dynamicdns.IPVersions) ([]
 			return nil, fmt.Errorf("invalid IP: %s", ipStr)
 		}
 
-		// Filter based on IP version requirements
-		if versions.V4Enabled() && addr.Is4() {
+		// Filter based on IP version requirements and IP range filtering
+		if settings.V4Enabled() && addr.Is4() && settings.Contains(addr) {
 			out = append(out, addr)
 			c.logger.Debug("parsed IPv4 successfully",
 				zap.String("command", c.Cmd),
 				zap.Strings("args", expandedArgs),
 				zap.String("ip", addr.String()))
-		} else if versions.V6Enabled() && addr.Is6() {
+		} else if settings.V6Enabled() && addr.Is6() && settings.Contains(addr) {
 			out = append(out, addr)
 			c.logger.Debug("parsed IPv6 successfully",
 				zap.String("command", c.Cmd),
